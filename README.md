@@ -71,3 +71,7 @@ Dans `/boot/config.txt` : `enable_uart=1` et `dtoverlay=disable-bt` ; retirer
 bus de l'IMU du MM1).
 
 La page de commande est alors à l'adresse `http://<adresse du Pi>:8000`.
+
+## Licence
+
+Code publié sous licence MIT (voir `LICENSE`).
