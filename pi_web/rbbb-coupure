@@ -1,0 +1,17 @@
+#!/bin/sh
+# RBBB - demande au MM1 de couper l'alimentation 5 V du Pi.
+# Execute par systemd a la toute fin de l'extinction (cartes SD deja en
+# lecture seule). Installe dans /lib/systemd/system-shutdown/.
+# Sans cette coupure, le Pi 3 se rallume tout seul : la ligne GPIO3 (SCL)
+# est partagee avec le bus I2C de l'IMU du MM1, et toute activite sur
+# GPIO3 reveille un Pi eteint.
+# $1 vaut "poweroff", "halt", "reboot" ou "kexec".
+case "$1" in
+  poweroff|halt)
+    stty -F /dev/serial0 115200 raw -echo 2>/dev/null
+    printf 'coupe-pi\n' > /dev/serial0
+    sleep 0.2
+    printf 'coupe-pi\n' > /dev/serial0
+    ;;
+esac
+exit 0

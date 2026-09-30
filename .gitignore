@@ -1,0 +1,9 @@
+# Fichiers produits par la compilation Arduino
+build/
+
+# Python
+__pycache__/
+*.pyc
+
+# Réglages locaux de Claude Code
+.claude/

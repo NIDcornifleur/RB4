@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>RB4</title>
+<style>
+  :root {
+    --fond: #14171c; --carte: #1e232b; --bord: #2e3540; --texte: #e8ecf1;
+    --doux: #9aa5b4; --accent: #3d8bfd; --vert: #2fbf71; --rouge: #e5484d; --jaune: #f5a524;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fond); color: var(--texte);
+         font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 12px 16px 32px;
+         display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { main { grid-template-columns: 3fr 2fr; } }
+  h1 { font-size: 18px; margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 10px; color: var(--doux); font-weight: 600; }
+  .carte { background: var(--carte); border: 1px solid var(--bord); border-radius: 12px; padding: 12px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .pastille { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--doux); }
+  .pastille i { width: 10px; height: 10px; border-radius: 50%; background: var(--rouge); display: inline-block; }
+  .pastille.ok i { background: var(--vert); }
+  .video { width: 100%; aspect-ratio: 4 / 3; background: #000; border-radius: 8px;
+           display: flex; align-items: center; justify-content: center; color: var(--doux); overflow: hidden; }
+  .video img { width: 100%; height: 100%; object-fit: contain; transition: transform .2s; }
+  /* Quart de tour : cadre en portrait (3:4) ; l'image, posee en paysage, est tournee
+     au centre et remplit exactement le cadre. */
+  .video.portrait { aspect-ratio: 3 / 4; width: auto; height: min(75vh, 133.33vw);
+                    max-width: 100%; margin-left: auto; margin-right: auto; position: relative; }
+  .video.portrait img { position: absolute; left: 50%; top: 50%;
+                        width: 133.333%; height: 75%; }
+  .petit { font-size: 13px; padding: 4px 10px; }
+  .mesures { display: flex; gap: 16px; margin-top: 10px; flex-wrap: wrap; font-size: 14px; }
+  .mesures b { font-variant-numeric: tabular-nums; }
+  .commande { display: flex; gap: 16px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  #manette { width: 220px; height: 220px; border-radius: 50%; background: #11151a;
+             border: 2px solid var(--bord); position: relative; touch-action: none; user-select: none; }
+  #manette::before, #manette::after { content: ""; position: absolute; background: var(--bord); }
+  #manette::before { left: 50%; top: 10%; bottom: 10%; width: 1px; }
+  #manette::after { top: 50%; left: 10%; right: 10%; height: 1px; }
+  #bouton { width: 76px; height: 76px; border-radius: 50%; background: var(--accent);
+            position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1;
+            box-shadow: 0 4px 14px rgba(0,0,0,.4); }
+  .cote { display: flex; flex-direction: column; gap: 12px; min-width: 150px; }
+  button { font: inherit; color: var(--texte); background: #2a313c; border: 1px solid var(--bord);
+           border-radius: 8px; padding: 9px 12px; cursor: pointer; }
+  button:active { transform: translateY(1px); }
+  button.primaire { background: var(--accent); border-color: var(--accent); }
+  #stop { background: var(--rouge); border-color: var(--rouge); font-weight: 700;
+          font-size: 20px; padding: 18px; letter-spacing: 1px; }
+  label { font-size: 13px; color: var(--doux); }
+  input[type=range] { width: 100%; }
+  .reglage { display: grid; grid-template-columns: 90px 1fr; gap: 6px 10px; align-items: center; margin-bottom: 10px; }
+  .reglage .nom { font-weight: 600; }
+  .reglage .nom small { display: block; font-weight: 400; color: var(--doux); font-size: 12px; }
+  .ligne { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  input[type=number] { font: inherit; width: 110px; padding: 8px; border-radius: 8px;
+                       border: 1px solid var(--bord); background: #11151a; color: var(--texte); }
+  .mm1 { font-size: 12px; color: var(--doux); }
+  .angle { border: 1px solid var(--jaune); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+  .angle input { width: 90px; font-size: 18px; text-align: center; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  #messages { font: 12px/1.4 ui-monospace, Consolas, monospace; color: var(--doux);
+              white-space: pre-wrap; margin-top: 10px; min-height: 1.4em; }
+  #conseil_angle { margin-top: 8px; padding: 8px; border-radius: 8px; background: rgba(245,165,36,.12);
+                   color: var(--jaune); font-size: 14px; }
+  #conseil_angle button { margin-top: 6px; }
+  #avis { font-size: 13px; margin-top: 8px; min-height: 1.4em; }
+  .aide { font-size: 12px; color: var(--doux); margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <div style="display:grid; gap:14px">
+    <div class="carte">
+      <header>
+        <h1>RB4, fabriqué par Roméo St-Cyr, septembre 2026</h1>
+        <div class="ligne" style="gap:14px">
+          <span class="pastille" id="p_mm1"><i></i>MM1</span>
+          <span class="pastille" id="p_eq"><i></i>Équilibre</span>
+        </div>
+      </header>
+      <div class="video" style="margin-top:10px"><img id="video" alt="Caméra"></div>
+      <div class="mesures">
+        <span>Inclinaison : <b id="incl">—</b></span>
+        <span>Vitesse : <b id="m_vit">0</b> %</span>
+        <span>Virage : <b id="m_vir">0</b> %</span>
+        <button id="b_cadrage" class="petit">Image : entière</button>
+      </div>
+    </div>
+
+    <div class="carte">
+      <h2>Déplacement</h2>
+      <div class="commande">
+        <div id="manette"><div id="bouton"></div></div>
+        <div class="cote">
+          <button id="stop">ARRÊT</button>
+          <div>
+            <label for="puissance">Vitesse maximale : <b id="puis_txt">50</b> %</label>
+            <input type="range" id="puissance" min="5" max="100" step="5" value="50">
+          </div>
+        </div>
+      </div>
+      <div class="aide">Glissez le rond bleu : haut = avancer, côtés = tourner. Relâché, le robot s'arrête.
+        Au clavier : flèches ou W A S D, barre d'espace = arrêt.</div>
+    </div>
+
+    <div class="carte">
+      <h2>Gyroscope</h2>
+      <button id="b_calibrer">Recalibrer le gyroscope</button>
+      <div class="aide">Robot <b>couché et immobile</b>. La DEL du MM1 s'allume 3 secondes ;
+        si le robot bouge, la mesure recommence. À faire si le robot part toujours du même côté
+        alors que l'angle semblait bon. Le résultat s'affiche sous les réglages.</div>
+    </div>
+
+    <div class="carte">
+      <h2>Raspberry Pi</h2>
+      <button id="b_eteindre">Éteindre le Pi</button>
+      <div class="aide" id="eteindre_txt">Extinction propre du Pi avant de couper la batterie.
+        Le MM1 continue de tenir l'équilibre sur place.</div>
+    </div>
+  </div>
+
+  <div class="carte">
+    <h2>Réglages de l'équilibre</h2>
+
+    <div class="angle">
+      <div class="reglage" style="margin-bottom:6px">
+        <div class="nom">Angle<small>point d'équilibre (°)</small></div>
+        <div class="ligne">
+          <input type="number" id="r_a" step="0.1">
+        </div>
+      </div>
+      <div class="ligne">
+        <button data-da="-0.5">−0,5</button>
+        <button data-da="-0.1">−0,1</button>
+        <button data-da="0.1">+0,1</button>
+        <button data-da="0.5">+0,5</button>
+      </div>
+      <div class="aide">Chaque appui est envoyé tout de suite au MM1.
+        Si le robot file vers l'avant, essayez de changer l'angle par petits pas.</div>
+      <div class="mm1">MM1 : <span id="mm1_a">—</span></div>
+      <div id="conseil_angle" style="display:none">
+        <div id="conseil_txt"></div>
+        <button class="primaire petit" id="b_conseil">Appliquer</button>
+      </div>
+    </div>
+
+    <div class="reglage">
+      <div class="nom">KP<small>correction selon l'angle</small></div>
+      <div><input type="number" id="r_p" step="50"> <span class="mm1">MM1 : <span id="mm1_p">—</span></span></div>
+    </div>
+    <div class="reglage">
+      <div class="nom">KD<small>amortissement</small></div>
+      <div><input type="number" id="r_d" step="10"> <span class="mm1">MM1 : <span id="mm1_d">—</span></span></div>
+    </div>
+    <div class="reglage">
+      <div class="nom">KV<small>boucle de vitesse (0 = arrêt)</small></div>
+      <div><input type="number" id="r_v" step="0.0001"> <span class="mm1">MM1 : <span id="mm1_v">—</span></span></div>
+    </div>
+    <div class="reglage">
+      <div class="nom">Filtre KD<small>coupure en Hz (0 = aucun)</small></div>
+      <div><input type="number" id="r_f" step="1" min="0" max="100"> <span class="mm1">MM1 : <span id="mm1_f">—</span></span></div>
+    </div>
+    <div class="reglage">
+      <div class="nom">KI<small>force pour avancer sur tapis (0 = aucune)</small></div>
+      <div><input type="number" id="r_i" step="0.0001" min="0" max="0.01"> <span class="mm1">MM1 : <span id="mm1_i">—</span></span></div>
+    </div>
+    <div class="reglage">
+      <div class="nom">Anticipation<small>vivacité au départ et à l'arrêt (0 = aucune, 1 = calculée)</small></div>
+      <div><input type="number" id="r_e" step="0.1" min="0" max="2"> <span class="mm1">MM1 : <span id="mm1_e">—</span></span></div>
+    </div>
+    <div class="reglage">
+      <div class="nom">Rampe<small>accélération de la consigne, pas/s²</small></div>
+      <div><input type="number" id="r_r" step="100" min="200" max="8000"> <span class="mm1">MM1 : <span id="mm1_r">—</span></span></div>
+    </div>
+    <div class="reglage">
+      <div class="nom">Freinage<small>rampe pour ralentir, pas/s² (0 = comme la rampe)</small></div>
+      <div><input type="number" id="r_b" step="500" min="0" max="8000"> <span class="mm1">MM1 : <span id="mm1_b">—</span></span></div>
+    </div>
+
+    <div class="actions">
+      <button class="primaire" id="b_envoyer">Envoyer au MM1</button>
+      <button id="b_enregistrer">Enregistrer sur le Pi</button>
+      <button id="b_lire">Relire le MM1</button>
+      <button id="b_origine">Valeurs d'origine</button>
+    </div>
+    <div id="avis"></div>
+    <div class="aide">« Envoyer » essaie les valeurs sans les garder : elles sont perdues si le MM1 redémarre.
+      « Enregistrer » les garde sur le Pi, qui les renvoie au MM1 à chaque démarrage.
+      Enregistré sur le Pi : <span id="pi_txt">—</span></div>
+    <div id="messages"></div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const champs = ["p", "d", "v", "a", "f", "i", "e", "r", "b"];
+
+async function poster(url, donnees) {
+  try {
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
+                                 body: JSON.stringify(donnees || {}) });
+    return await r.json();
+  } catch (e) { return { ok: false, erreur: "Pas de réponse du Pi" }; }
+}
+
+function avis(texte, erreur) {
+  $("avis").textContent = texte;
+  $("avis").style.color = erreur ? "var(--rouge)" : "var(--vert)";
+}
+
+// ---------------------------------------------------------------- vidéo
+function chargerVideo() { $("video").src = "/video?" + Date.now(); }
+$("video").onerror = () => setTimeout(chargerVideo, 3000);
+chargerVideo();
+
+// Rotation de l'image faite par le navigateur (rien de plus a faire pour le Pi).
+// ROTATION en degres : negatif = sens antihoraire.
+const ROTATION = 0;
+// Image 4:3 tournee dans un cadre 4:3 : "entière" = tout visible (coins noirs),
+// "remplie" = cadre rempli (bords de l'image coupes).
+function echelles(deg) {
+  const a = Math.abs(deg) * Math.PI / 180, c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a));
+  const W = 4, H = 3;
+  const besoin = Math.max((W * c + H * s) / W, (W * s + H * c) / H);
+  return { entiere: 1 / besoin, remplie: besoin };
+}
+let cadrage = "entiere";
+try { cadrage = localStorage.getItem("cadrage") || "entiere"; } catch (e) {}
+function appliquerCadrage() {
+  const cadre = $("video").parentElement;
+  if (Math.abs(ROTATION) % 180 === 90) {
+    // quart de tour : cadre portrait, rien de perdu, bouton inutile
+    cadre.classList.add("portrait");
+    $("video").style.transform = "translate(-50%, -50%) rotate(" + ROTATION + "deg)";
+    $("b_cadrage").style.display = "none";
+    return;
+  }
+  cadre.classList.remove("portrait");
+  $("b_cadrage").style.display = "";
+  const k = echelles(ROTATION)[cadrage];
+  $("video").style.transform = "rotate(" + ROTATION + "deg) scale(" + k.toFixed(3) + ")";
+  $("b_cadrage").textContent = cadrage === "entiere" ? "Image : entière" : "Image : remplie";
+}
+$("b_cadrage").onclick = () => {
+  cadrage = cadrage === "entiere" ? "remplie" : "entiere";
+  try { localStorage.setItem("cadrage", cadrage); } catch (e) {}
+  appliquerCadrage();
+};
+appliquerCadrage();
+
+// ---------------------------------------------------------------- déplacement
+let vitesse = 0, virage = 0, enMouvement = false, minuterie = null;
+const puissance = () => +$("puissance").value;
+$("puissance").oninput = () => $("puis_txt").textContent = $("puissance").value;
+
+function envoyerOrdre() {
+  const k = puissance() / 100;
+  poster("/ordre", { vitesse: Math.round(vitesse * k * 100), virage: Math.round(virage * k * 100) });
+}
+function commencer() {
+  if (!minuterie) { envoyerOrdre(); minuterie = setInterval(envoyerOrdre, 100); }
+}
+function arreter() {
+  vitesse = 0; virage = 0;
+  if (minuterie) { clearInterval(minuterie); minuterie = null; }
+  poster("/arret");
+  placerBouton(0, 0);
+}
+
+const manette = $("manette"), bouton = $("bouton");
+function placerBouton(x, y) {
+  const r = manette.clientWidth / 2 - 38;
+  bouton.style.left = (50 + x * r / (manette.clientWidth / 2) * 50) + "%";
+  bouton.style.top = (50 - y * r / (manette.clientHeight / 2) * 50) + "%";
+}
+function lirePointeur(e) {
+  const b = manette.getBoundingClientRect();
+  const r = b.width / 2 - 38;
+  let x = (e.clientX - b.left - b.width / 2) / r;
+  let y = -(e.clientY - b.top - b.height / 2) / r;
+  const n = Math.hypot(x, y);
+  if (n > 1) { x /= n; y /= n; }
+  vitesse = y; virage = x;
+  placerBouton(x, y);
+}
+manette.addEventListener("pointerdown", e => {
+  manette.setPointerCapture(e.pointerId); enMouvement = true; lirePointeur(e); commencer();
+});
+manette.addEventListener("pointermove", e => { if (enMouvement) lirePointeur(e); });
+["pointerup", "pointercancel", "lostpointercapture"].forEach(t =>
+  manette.addEventListener(t, () => { if (enMouvement) { enMouvement = false; arreter(); } }));
+$("stop").onclick = arreter;
+
+// Clavier
+const touches = new Set();
+function majClavier() {
+  const av = touches.has("ArrowUp") || touches.has("w");
+  const re = touches.has("ArrowDown") || touches.has("s");
+  const ga = touches.has("ArrowLeft") || touches.has("a");
+  const dr = touches.has("ArrowRight") || touches.has("d");
+  vitesse = (av ? 1 : 0) - (re ? 1 : 0);
+  virage = (dr ? 1 : 0) - (ga ? 1 : 0);
+  if (vitesse || virage) { placerBouton(virage * 0.7, vitesse * 0.7); commencer(); } else arreter();
+}
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.key === " ") { e.preventDefault(); touches.clear(); arreter(); return; }
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"].includes(k)) {
+    e.preventDefault(); if (!touches.has(k)) { touches.add(k); majClavier(); }
+  }
+});
+document.addEventListener("keyup", e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  if (touches.delete(k)) majClavier();
+});
+window.addEventListener("blur", () => { touches.clear(); if (minuterie) arreter(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden && minuterie) arreter(); });
+
+// ---------------------------------------------------------------- réglages
+function valeursSaisies() {
+  const d = {};
+  champs.forEach(k => { const v = $("r_" + k).value; if (v !== "") d[k] = +v; });
+  return d;
+}
+function remplir(r) { champs.forEach(k => { if (r && r[k] !== undefined) $("r_" + k).value = r[k]; }); }
+
+document.querySelectorAll("[data-da]").forEach(b => b.onclick = async () => {
+  const a = Math.round(((+$("r_a").value || 0) + +b.dataset.da) * 10) / 10;
+  $("r_a").value = a;
+  const r = await poster("/reglages", { a });
+  r.ok ? avis("Angle " + a + "° envoyé au MM1") : avis(r.erreur, true);
+});
+$("b_conseil").onclick = async () => {
+  const r = await poster("/corriger_angle");
+  if (r.ok) { $("r_a").value = r.angle; avis("Angle " + r.angle + "° envoyé au MM1 (pensez à « Enregistrer sur le Pi »)"); }
+  else avis(r.erreur, true);
+};
+$("b_envoyer").onclick = async () => {
+  const r = await poster("/reglages", valeursSaisies());
+  r.ok ? avis("Valeurs envoyées au MM1") : avis(r.erreur, true);
+};
+$("b_enregistrer").onclick = async () => {
+  const r = await poster("/enregistrer", valeursSaisies());
+  r.ok ? avis("Valeurs enregistrées sur le Pi et envoyées au MM1") : avis(r.erreur, true);
+};
+$("b_lire").onclick = async () => {
+  await poster("/lire");
+  setTimeout(async () => {
+    const e = await (await fetch("/etat")).json();
+    remplir(e.reglages_mm1); avis("Valeurs relues sur le MM1");
+  }, 400);
+};
+$("b_origine").onclick = async () => {
+  const r = await poster("/origine");
+  if (r.ok) { remplir(r.reglages); avis("Valeurs d'origine envoyées au MM1 (non enregistrées)"); }
+};
+
+// ---------------------------------------------------------------- gyroscope
+$("b_calibrer").onclick = async () => {
+  const r = await poster("/calibrer");
+  r.ok ? avis("Calibration demandée : ne touchez pas le robot pendant 3 secondes")
+       : avis(r.erreur, true);
+};
+
+// ---------------------------------------------------------------- extinction
+// Deux appuis : le premier arme le bouton pendant 5 secondes.
+let eteintDemande = false, armeJusqua = 0;
+$("b_eteindre").onclick = async () => {
+  const b = $("b_eteindre");
+  if (Date.now() > armeJusqua) {
+    armeJusqua = Date.now() + 5000;
+    b.textContent = "Confirmer : éteindre le Pi";
+    b.style.background = "var(--rouge)"; b.style.borderColor = "var(--rouge)";
+    setTimeout(() => { if (!eteintDemande && Date.now() > armeJusqua) {
+      b.textContent = "Éteindre le Pi"; b.style.background = ""; b.style.borderColor = ""; } }, 5100);
+    return;
+  }
+  eteintDemande = true;
+  arreter();
+  b.disabled = true;
+  b.textContent = "Extinction en cours...";
+  await poster("/eteindre");
+  $("eteindre_txt").innerHTML = "<b>Le Pi s'éteint.</b> Dans environ 20 secondes, le MM1 coupera " +
+    "son alimentation (toutes les DEL du Pi s'éteignent). Le robot garde l'équilibre : couchez-le, " +
+    "puis coupez la batterie. Pour rallumer le Pi seul : bouton POWER du MM1.";
+  $("eteindre_txt").style.color = "var(--jaune)";
+};
+
+// ---------------------------------------------------------------- état
+let premier = true;
+function fmt(v) { return v === undefined || v === null ? "—" : String(+v.toPrecision(6)); }
+async function lireEtat() {
+  try {
+    const e = await (await fetch("/etat")).json();
+    $("p_mm1").classList.toggle("ok", e.mm1_repond);
+    $("p_eq").classList.toggle("ok", e.actif);
+    $("incl").textContent = e.inclinaison === null ? "—" : e.inclinaison.toFixed(1) + "°";
+    $("m_vit").textContent = e.vitesse; $("m_vir").textContent = e.virage;
+    champs.forEach(k => $("mm1_" + k).textContent = fmt(e.reglages_mm1[k]));
+    const noms = { p: "KP", d: "KD", v: "KV", a: "angle", f: "filtre KD (Hz)", i: "KI", e: "anticipation", r: "rampe", b: "freinage" };
+    $("pi_txt").textContent = champs.map(k => noms[k] + " " + fmt(e.reglages_pi[k])).join(", ");
+    $("messages").textContent = e.messages.join("\n");
+    const c = e.conseil_angle;
+    $("conseil_angle").style.display = c ? "" : "none";
+    if (c) {
+      $("conseil_txt").textContent = "⚠ Angle d'équilibre à corriger d'environ " +
+        (c.n > 0 ? "+" : "") + c.n.toFixed(1) + "° : KI penche le robot pour compenser, " +
+        "il perd de la force d'un côté. Angle conseillé : " + c.conseil.toFixed(1) +
+        " (au lieu de " + c.a + ").";
+      $("b_conseil").textContent = "Appliquer " + c.conseil.toFixed(1) + "°";
+    }
+    if (premier) { remplir(Object.keys(e.reglages_mm1).length ? e.reglages_mm1 : e.reglages_pi); premier = false; }
+  } catch (err) {
+    $("p_mm1").classList.remove("ok");
+    $("p_eq").classList.remove("ok");
+  }
+}
+setInterval(lireEtat, 500);
+lireEtat();
+</script>
+</body>
+</html>

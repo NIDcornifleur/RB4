@@ -1,0 +1,14 @@
+[Unit]
+Description=RBBB - page web de commande du robot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=rj
+WorkingDirectory=/home/rj/rbbb_web
+ExecStart=/usr/bin/python3 /home/rj/rbbb_web/rbbb_web.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
